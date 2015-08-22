@@ -12,19 +12,22 @@ object GenProxyMacro {
 
   def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
-    //we need to do some pattern matching to pull out just the type of the trait
+
+    // reflection to get type of the trait to implement
+    // stolen from http://imranrashid.com/posts/scala-reflection/
     val targetTrait = c.prefix.tree match {
       case Apply(Select(New(AppliedTypeTree(Ident(_), List(typ))), nme.CONSTRUCTOR), List()) => typ
     }
-
     //of course, 7 is not really an instance of our target trait -- but we
     // don't care; we just want it to *type check* as our target trait,
     // so we can pull out the type
     val tpe: c.universe.Type = c.typeCheck(q"(7.asInstanceOf[$targetTrait])").tpe
 
+    // get all the methods to implement
     val methods: Iterable[c.universe.MethodSymbol] = tpe.declarations.filter(_.isMethod)
       .map(_.asMethod)
       .filter(isDeferred[c.universe.Symbol])
+
     val methodNames: Iterable[String] =  methods.map(_.name) map (_.toString)
     val printNames = q"""
       println(..$methodNames)
@@ -32,9 +35,11 @@ object GenProxyMacro {
 
     def genMethods(serv: ValDef) = methods map { (m: c.universe.MethodSymbol) =>
       val methodName = m.name.toTermName
+      // helpful: http://stackoverflow.com/questions/18559559/quasiquotes-for-multiple-parameters-and-parameter-lists?rq=1
       val params: List[List[ValDef]] = m.paramss.map { _ map { p =>
         q"val ${p.name.toTermName}: ${p.typeSignature}"
-        //ValDef(Modifiers(Flag.PARAM), p.name.toTermName, TypeTree(p.typeSignature), EmptyTree)
+        // ^ is equivalent to:
+        // ValDef(Modifiers(Flag.PARAM), p.name.toTermName, TypeTree(p.typeSignature), EmptyTree)
       }}
       val args: List[List[TermName]] = m.paramss.map { _ map { _.name.toTermName } }
       q"""
@@ -59,7 +64,7 @@ object GenProxyMacro {
               ..$body
             }
           """
-          //q"""println(${showRaw(methods)})"""
+          //q"""println(${showRaw(methods)})"""  // <= uncomment this to debug AST
         case x => q"""println(${showRaw(x)})"""
       }
     }
