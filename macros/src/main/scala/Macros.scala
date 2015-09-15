@@ -28,7 +28,7 @@ object GenProxyMacro {
       .map(_.asMethod)
       .filter(isDeferred[c.universe.Symbol])
 
-    val methodNames: Iterable[String] =  methods.map(_.name) map (_.toString)
+    val methodNames = methods.map(_.name.toString)
     val printNames = q"""
       println(..$methodNames)
       """

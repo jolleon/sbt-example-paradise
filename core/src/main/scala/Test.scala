@@ -14,6 +14,7 @@ class ServiceImpl extends Service {
   def y = println("ServiceImpl.y")
 
   def z(n: Int, s: String) = {
+    println("ServiceImpl.z")
     List.fill(n)(s)
   }
 }
